@@ -19,16 +19,19 @@ const MaxNumberOfTags = 3
 
 // Message structures contain both the message text and the envelop for an e-mail message.
 type Message struct {
-	to                []string
-	tags              []string
-	campaigns         []string
-	dkim              bool
-	deliveryTime      time.Time
+	to           []string
+	tags         []string
+	campaigns    []string
+	dkim         bool
+	deliveryTime time.Time
+
 	attachments       []string
 	readerAttachments []ReaderAttachment
-	inlines           []string
-	readerInlines     []ReaderAttachment
 	bufferAttachments []BufferAttachment
+
+	inlines       []string
+	readerInlines []ReaderAttachment
+	bufferInlines []BufferAttachment
 
 	nativeSend         bool
 	testMode           bool
@@ -240,6 +243,12 @@ func (m *Message) AddAttachment(attachment string) {
 func (m *Message) AddReaderInline(filename string, readCloser io.ReadCloser) {
 	ra := ReaderAttachment{Filename: filename, ReadCloser: readCloser}
 	m.readerInlines = append(m.readerInlines, ra)
+}
+
+// AddBufferInline
+func (m *Message) AddBufferInline(filename string, buffer []byte) {
+	ba := BufferAttachment{Filename: filename, Buffer: buffer}
+	m.bufferInlines = append(m.bufferInlines, ba)
 }
 
 // AddInline arranges to send a file along with the e-mail message, but does so
@@ -602,15 +611,20 @@ func (mg *MailgunImpl) Send(ctx context.Context, message *Message) (mes string, 
 			payload.addBuffer("attachment", bufferAttachment.Filename, bufferAttachment.Buffer)
 		}
 	}
+
 	if message.inlines != nil {
 		for _, inline := range message.inlines {
 			payload.addFile("inline", inline)
 		}
 	}
-
 	if message.readerInlines != nil {
 		for _, readerAttachment := range message.readerInlines {
 			payload.addReadCloser("inline", readerAttachment.Filename, readerAttachment.ReadCloser)
+		}
+	}
+	if message.bufferInlines != nil {
+		for _, bufferInline := range message.bufferInlines {
+			payload.addBuffer("inline", bufferInline.Filename, bufferInline.Buffer)
 		}
 	}
 
